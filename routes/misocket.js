@@ -2,9 +2,9 @@
  
 var express = require('express');
 
-var router 	= express.Router();
+var router 	= express.Router();             
 
-var Hashtable = require('jshashtable');
+var Hashtable = require('jshashtable');     // 해시테이블 
 
 // F30 ================  웹소켓  ========================= 
 // 호출주소 
@@ -15,7 +15,7 @@ const WebSocket = require('ws');    // 소켙라이브러리 호출
 
 var allmcnt   = 0;                  // 전체 메시지 수량 
 var conncnt   = 0;                  // 소켙 접속 횟수 (전체)
-var socketPort = 1001; 
+var socketPort = 88; 
 var wshashtable = new Hashtable();  // 웹소켙 객체추가 
 
 // 메인에서 해시테이블 상태확인 
@@ -24,56 +24,8 @@ global.wshashtable = wshashtable;
 const webSkt = new WebSocket.Server({
   port: socketPort,
 });
- 
-
-// F17. 소켙상태확인 
-function checkSocketArr() {
-    
-    let currWss; 
-    let currDeviceid; 
-      
-    let i = 0;
-    let acnt = 0; 
-
-    for ( i in wshashtable ) {
-        acnt++; 
-    }; 
-    /*
-    if ( wshashtable == null || wshashtable == undefined ) {
-        console.log("SK11 wshash is null"); 
-        return false; 
-    };
-
-    // 소켙내 접속수량 
-    acnt = Object.keys(wshashtable).length; 
-
-    // 소켙 해시내에 데이터가 없음. 
-    if ( acnt == 0 ) {
-        console.log("SK12no connection"); 
-        return false; 
-    };
-*/ 
-    console.log("SK135 Yes socket acnt=" + acnt); 
-/*
-    // ex) 디바이스 오브젝트 dObj = {"deviceid":"111111","opentm":"08:30:00","closetm":"03:00:00"} 
-    for( i = 0; i < acnt ; i++ ) {
-
-        dvObj =  wshashtable[0]; 
-
-        console.log("DV11 dobj=" + JSON.stringify(dvObj) ); 
-    
-        currWss = dvObj.deviceid; 
-    
-        console.log("DV12 Device currDeviceid=" + currDeviceid); 
- 
- 
-    }; 
-    */ 
-}; 
-
-
-
-// F30. socket Error  
+  
+// F30. 소켙오류 처리 
 const sendError = (wskt, errmessage) => {
 
   const messageObject = {
@@ -92,7 +44,7 @@ const sendError = (wskt, errmessage) => {
 // EOF F30. 
 
 
-// F29. 디바이스 분리 ws://121.11.23.3/socket?deviceid=10004&user=james --> 10004
+// F29. 디바이스정보확인 ws://121.11.23.3/socket?deviceid=10004&user=james --> 10004
 function getDeviceId(srcURL) {
 
     let tmpStr = ""; 
@@ -110,7 +62,7 @@ function getDeviceId(srcURL) {
     }; 
 }; 
 
-// F31. 기기 오픈 전달  
+// F31. 기기 오픈 전달  (참조로 생성한 함수 : 필요시 진행)
 function checkOpenMsg(deviceArr) {
     
     let currlWss; 
@@ -129,8 +81,7 @@ function checkOpenMsg(deviceArr) {
         currDeviceid = dvObj.deviceid; 
     
         console.log("DV12 Device currDeviceid=" + currDeviceid); 
- 
- 
+  
     }; 
     
 }; 
@@ -139,9 +90,10 @@ function checkOpenMsg(deviceArr) {
 // F41-a. 웹소켙접속 메시지 (전달)
 webSkt.on('connection', (wskt, request) => {
       
-    // console.log(`C09. Conn Url ${request.url}`);
+    // 확인가능  request.url ex)  ws://121.11.23.3/socket?deviceid=10004&user=james
     let conuri =  request.url; 
 
+    //  디바이스확인  ws://121.11.23.3/socket?deviceid=10004&user=james --> 10004
     let deviceid = conuri.replace(/.+deviceid=([^&]+).*/,"$1");
 
     console.log( "SC10 conuri=" + conuri + " / deviceid=" + deviceid); 
@@ -153,33 +105,25 @@ webSkt.on('connection', (wskt, request) => {
     // 웹소켙 접속시 정보를 추가함. 
     wshashtable.put(deviceid, wskt);
 
-    conncnt++;                  // 현재 접속 수량증대 
+    conncnt++;    // 현재 접속 수량증대 (참고정보)
 
     wskt.send('Connected To mi WebSocket V1.4 conncnt=' + conncnt);
 
     wskt.send(' DEVICE STATUS SET=' +  deviceStatusSet.getResulSetStr() );
    
     let deviceSetArr = deviceStatusSet.getResulSetArr();  // 목록 배열 호출 
+
     let deviceSetCnt = deviceSetArr.length;  
+
     console.log( "DV98 Arr size=" + deviceSetArr.length); 
-
-    // 열림 대상 확인 
-    if ( deviceSetCnt > 0 ) {
-        //checkOpenMsg(deviceSetArr); 
-    }; 
-
-    // 소켙상태 확인 
-    checkSocketArr(); 
-
-     // F33-1. binding message 
+ 
+     // F33-1. binding message (메시지 요청이 왔을 경우에 소켙서버에서 보내기 : 리액션임)
+     // 메시지를 받은 경우에 DB상태를 변경하거나 다른 소켙에 메시지를 보내거나 등의 후속 처리 진행 
      wskt.on('message', (indata) => {
 
         let fmessage  = "";
         let deviceSetTmp = deviceStatusSet.getResulSetStr();  // 목록 값 호출 
-
-        // 소켙상태 확인 
-        //checkSocketArr(); 
-
+ 
         // 현재시간 ( millisec )
         pfnow = process.hrtime(); 
         curmcnt++;  // 현재메시지 수량 
