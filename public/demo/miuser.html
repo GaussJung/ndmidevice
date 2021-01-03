@@ -116,6 +116,11 @@
                     <span id="connectionStatus">CLOSED</span>
                 </div>
            
+                <div style='height:30px;padding-left:20px;'>
+                    <label>Action:</label>
+                    <span id="actionStatus">---</span>
+                </div>
+
 
                 <div style='padding:10px;' >
                     <textarea  id=outResult  style='background:rgb(222, 240, 214);min-height:500px;border:1px solid #777777;width:100%;'  value="" ></textarea>
@@ -141,9 +146,11 @@
             console.log("cmd >> nodemon server.js or node server.js "); 
  
             console.log("url >> http://13.125.85.64:3000/demo/miuser.html  ============"); 
-            console.log("sck >> ws://13.125.85.64:1001/misocket  ============"); 
-            console.log("sck >> ws://localhost:1001/misocket  ============"); 
+            console.log("sck >> ws://13.125.85.64:88/misocket  ============"); 
+            console.log("sck >> ws://localhost:88/misocket  ============"); 
             
+
+            var actFlag = 0;                // 동작플래그 0 : 기본, 1 : 동작진행중, 2 : 동작완료 
 
             var ws = null;                  // 웹소켙 객체 
             var connected = false;          // 접속여부 
@@ -156,8 +163,8 @@
             var disconnectButton;           // 종료버튼 
             var sendButton;                 // 메시지발송버튼 
 
-            const remoteSocket = 'ws://13.125.32.176:1000/misocket';                    // 원격접속 
-            const localSocket  = 'ws://localhost:1001/misocket';                        // 로컬접속  
+            const remoteSocket = 'ws://13.125.32.176:88/misocket';                    // 원격접속 
+            const localSocket  = 'ws://localhost:88/misocket';                        // 로컬접속  
 
             // P05. 환경설정
             function setInitEnv() {
@@ -282,11 +289,96 @@
                 reset();
             };
 
+            // P51-A. action - open  
+            function openDevice (actionCode) {
+ 
+                let sendMsgStr = actionCode + "||SUCCESS"; 
+
+                // 소켙으로 데이터 보냄 
+                ws.send( sendMsgStr);
+                
+                // S1. 열기요청 
+          
+                // S2. 열기진행 
+                setTimeout( function(){
+                    $("#actionStatus").html("<span style='color:green' >Doing something for open</span>"); 
+
+                    // 화면창에 뛰워줌 
+                    addMessage(  sendMsgStr ) ;
+
+                }, 300);
+
+                // S3. 열기완료  
+                setTimeout( function(){
+                    $("#actionStatus").html("<span style='color:red' >Open and send Message!</span>"); 
+                  }, 1000);
+ 
+                
+                // S5. 초기상태  
+                setTimeout( function(){
+                    $("#actionStatus").html("<span style='color:black' >---</span>"); 
+                 }, 3000);
+
+            }; 
+            // EOF P51-A
+
+            
+            // P51-A. action - close  
+             function closeDevice(actionCode) {
+
+                let sendMsgStr = actionCode + "||SUCCESS"; 
+ 
+                // 소켙으로 데이터 보냄 
+                ws.send( sendMsgStr);
+                
+                // S1. 닫음요청 
+          
+ 
+                // S2. 담음진행 
+                setTimeout( function(){
+
+                    $("#actionStatus").html("<span style='color:green' >Doing something for close</span>"); 
+
+                    // 화면창에 뛰워줌 
+                    addMessage(  sendMsgStr ) ;
+                    
+                }, 300);
+
+                // S3. 닫음완료  
+                setTimeout( function(){
+                    $("#actionStatus").html("<span style='color:red' >Close and send Message!</span>"); 
+          
+                }, 1000);
+ 
+                // S5. 메시지 초기상태  (유지)
+                setTimeout( function(){
+                    $("#actionStatus").html("<span style='color:black' >---</span>"); 
+                }, 3000);
+
+            }; 
+            // EOF P51-B
+ 
             // P60. 메시지 발송 
             var onMessage = function(event) {
-                let data = event.data;
-                console.log('SK31 onMessage data=' + data); 
-                addMessage(data);
+
+                let msgdata = event.data;
+                
+                console.log('SK31 onMessage data=' + msgdata); 
+
+                // 동작중이 아닌 정상상태일 경우에만 메시지 창에 추가함. 
+                addMessage(msgdata);
+                  
+                // 아래는 기기 액션을 수반함 actFlag에 변경있고 0.6초후 원래대로 돌아옮 (액션진행중에 메시지 받지 않음)
+                if ( msgdata.indexOf("ACTION-100") > -1 ) {
+                    // 열기요청 
+                    openDevice("ACTION-100"); 
+                }
+                else if ( msgdata.indexOf("ACTION-200") > -1 ) {
+                    // 닫기요청 
+                    closeDevice("ACTION-200"); 
+                }; 
+
+
             };
 
             // P70. 오류시 
@@ -338,6 +430,7 @@
                 nowtime = performance.now(); 
                 sendFinalMsg = msg + "  [ " + nowtime + " ] "; 
                 console.log('SK33 sendFinalMsg=' + sendFinalMsg); 
+
                 ws.send(sendFinalMsg);
              });
 

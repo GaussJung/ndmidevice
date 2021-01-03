@@ -89,7 +89,7 @@ function checkOpenMsg(deviceArr) {
 
 // F41-a. 웹소켙접속 메시지 (전달)
 webSkt.on('connection', (wskt, request) => {
-      
+       
     // 확인가능  request.url ex)  ws://121.11.23.3/socket?deviceid=10004&user=james
     let conuri =  request.url; 
 
@@ -141,25 +141,55 @@ webSkt.on('connection', (wskt, request) => {
             return;
         }
         // EOF SF05. 
-        let metaStr = "V1.4 Time=" + pfnow + " / connAll=" + conncnt + " / msgAll=" + allmcnt + " / msgCur=" + curmcnt;
-        
-        let finalMsg = metaStr + "\n" + fmessage;  // 최종메시지 : 메타정보 + 전달메시지 
-     
-        console.log("D11K deviceSetTmp=" + deviceSetTmp ); 
 
-        if ( deviceSetTmp != null && deviceSetTmp.length > 0 ) {
-            // 소켙통신으로 기기 목록 DB결과 내보냄 
-            finalMsg += "\n" + deviceSetTmp;
-            console.log( "D11G finalMsg=" + finalMsg ); 
-        }; 
+        // 입력데이터에 액션데이터가 있는지 확인 
+        if ( indata.indexOf("ACTION-100||SUCCESS") > -1 ) {
+            // 열기완료 setDeviceStatus('D111111', 'Y')
+            console.log("D09-K Final Open" ); 
+            deviceStatusSet.setDeviceStatus(deviceid,'Y'); 
+        }
+        else  if ( indata.indexOf("ACTION-200||SUCCESS") > -1 ) {
+            // 닫기완료 
+            console.log("D10-K Final Close" ); 
+            deviceStatusSet.setDeviceStatus(deviceid,'Y'); 
+            
+        }
+        else {
 
-        wskt.send(finalMsg); 
+            let metaStr = "V1.4 Time=" + pfnow + " / connAll=" + conncnt + " / msgAll=" + allmcnt + " / msgCur=" + curmcnt;
+            
+            let finalMsg = metaStr + "\n" + fmessage;  // 최종메시지 : 메타정보 + 전달메시지 
+         
+            console.log("D11K deviceSetTmp=" + deviceSetTmp ); 
     
-  });
-  // EOF F33-1. message binding 
+            if ( deviceSetTmp != null && deviceSetTmp.length > 0 ) {
+                // 소켙통신으로 기기 목록 DB결과 내보냄 
+                finalMsg += "\n" + deviceSetTmp;
+                console.log( "D11G finalMsg=" + finalMsg ); 
+            }; 
+    
+            // 메시지 송부 
+            wskt.send(finalMsg); 
+        }; 
  
+    
+    });
+    // EOF F33-1. message binding 
+    
+    // F33-2. 웹소켙 종료 
+    wskt.on('close', function(reasonCode, description) {
+        // 소켙해쉬에서 제거 
+        wshashtable.remove(deviceid); 
+        console.log((new Date()) + ' Peer disconnected.');
+    });
+    // EOF F33-2
 });
 // EOF F41-a 
  
+// F42. 웹소켙종료 
+webSkt.on('close', function close() {
+    console.log("CLOSED"); 
+});
+
 module.exports = router;
 

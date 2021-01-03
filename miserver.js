@@ -1,105 +1,109 @@
 ﻿'use strict'; 
 
-// VER 1.0 for ncsocket 
-const express   = require('express');
- 
-const app   = express();
-const PORT = process.env.PORT = 3000;
- 
-// 인원목록 출력 
-var memberRouter  = require('./routes/member');    // 회원목록 라우터 
-var emgRouter     = require('./routes/emgCall');    // 비상호출 라우터 
-var empSetRouter  = require('./routes/emp');
+/*
+- PrgName : ndmidevice 
+- Date : 2020. 01. 02 
+- Creator : C.W. Jung ( cwjung@soynet.io )
+- Version : 1.0 
+- Description : socket server for soynet device operation 
+- Usage 
+1) startup : sudo node miserver.js  ( or sudo forever start miserver.js )  
+2) stop : sudo killall node ( including other node service instances )
+3) socket address ( 88 means port numbers which could be changed. )
+   ws://localhost:88/socket?deviceid=10111  
+   wss://localhost:442/socket?deviceid=10111
+4) Test URL ( if web is allowed ~ ) 
+   http://ip:3000/demo/miuser.html 
+*/ 
+const express       = require('express');
+const app           = express();
+const PORT          = process.env.PORT = 3000;          // 웹을 열 경우에 사용 
 
-
-// 소켙 
-var socketRouter  = require('./routes/misocket');    // 소켙통신 
-
-// post 파서 
-var bodyParser = require('body-parser');            // POST 인자 파서 
-app.use(bodyParser.json());                         // POST 인자 파서 사용 
-app.use(bodyParser.urlencoded({ extended: true })); // POST 인자 인코딩 
-
-// 인원목록 라우팅 
-app.use('/member', memberRouter);
-
-// 비상호출 라우팅 
-app.use('/emergency', emgRouter);                    
-
-// 목록호출 테스트 
-app.use('/emp', empSetRouter);   
-
-// 정적 데이터 디렉토리 설정 
-app.use(express.static('public'));
- 
- // 소켙 통신  
-app.use('/misocket', socketRouter);                
-
+//  ==================== F10. 소켙관련 라이브러리 및 변수선어 ====================
+//  소켙라우터  
+var socketRouter    = require('./routes/misocket');    // 소켙통신 
 
 // 상태목록 호출 라이브러리  (경로명에 유의)
 var deviceStatusSet = require('./dataset/dataDeviceSet');   
 
-var deviceArr     = [];       // 설정상태 기기목록 콜렉션
-var deviceCnt     = 0;        // 설정상태 기기수량 
-var deviceOutStr  = "";       // 설정상태 기기목록 문자열 
+var deviceArr       = [];       // D1. 설정상태 기기목록 콜렉션
+var deviceCnt       = 0;        // D2. 설정상태 기기수량 
+var deviceOutStr    = "";       // D3. 설정상태 기기목록 문자열 
 
- // 글로벌 변수선언 
- global.deviceStatusSet = deviceStatusSet; 
- 
-// F10. 비상호출 대기 직원 정보전달 
-function setDeviceStatusList(statusCdVal) {
+// 글로벌 변수선언 ( 사용처 : misocket.js에서 기기정보 (D1~D3)를 확인할 목적으로 사용)
+global.deviceStatusSet = deviceStatusSet; 
 
-    // deviceArr     = [];       // 설정상태 기기목록 콜렉션 초기화 
-    // deviceCnt     = 0;        // 설정상태 수량 초기화 
-    // deviceOutStr  = "";       // 설정상태 기기목록 문자열 초기화  
-
-    deviceStatusSet.getDeviceFlagSet(statusCdVal);  // 상태코드값에 해당하는 콜렉션 설정 
-
-    setTimeout( function(){   
-        // callBack 호출받은뒤에 실행 
-        // 이와 같이 호출시에 결과값을 리턴받을 수 있음. (비동기값을 회피 )   
-        deviceArr      = deviceStatusSet.getResulSetArr(); 
-        deviceCnt      = deviceArr.length;
-        deviceOutStr   = deviceStatusSet.getResulSetStr(); 
-
-        // console.log("EMP-V1 final outStr=" + gDeviceOutStr) ;
-        // console.log("DVC-V2 Arr Length gDeviceCnt=" + gDeviceCnt) ;
-         
-        if ( deviceCnt > 0 ) {
-            // 한개라도 자료가 있을 경우 내려보냄 
-            // console.log("DVC-V3 dcnt=" + gDeviceCnt + " / result=" + gDeviceOutStr);
-        }; 
-   
-    }, 100);
-   
-}; 
-// EOF F10. 
- 
-
- // 기기상태 점검 타이머
+// F22. 기기상태 점검 타이머
 var deviceStatusChecker;            
 var deviceCheckCnt      = 0;    // 체크 횟수 
-var deviceCheckTime     = 2000; // 0.1초 간격으로 타임체크 
 
-// F015. 타이머 기동 
-function startDeviceChecker(statusCdVal) {
+// F23. 초기상태코드 
+var initstatuscdVal     = "A";       // A:열림, C:닫힘, Y:동작완료 
+var allowWebUpd         = true;     // 웹접속허용(true : 허용, false:불허 - 단지 소켙만 허용 )
+var consoleUpd          = false;    // 콘솔출력여부 ( true : 출력, false : 미출력 )
 
+ 
+// 소켙 통신  
+app.use('/misocket', socketRouter);                
+ 
+//  ==================== F20. 기기상태정보 목록 설정  ====================
+function setDeviceStatusList() {
+
+    // F20-A. 설정값 호출간격 0.1초 간격 ( 조정가능 )
+    let checkStatTime = 100; 
+
+    // statusCdVal : A(열림요청), C(닫힘요청), Y(처리완료) 
+
+    // F20-A  상태코드값에 해당하는 콜렉션 설정 
+    if ( initstatuscdVal.length == 0 ) {
+        // 상태코드값 불필요 (지정된 항목 A,C 전체)
+        deviceStatusSet.getDeviceAllSet();  
+    }
+    else {
+        // 상태코드값이 지정됨( 초기 설정값 ) A or C or Y etc 
+        deviceStatusSet.getDeviceFlagSet(initstatuscdVal); 
+    }; 
+
+    // 기기상태설정목록값 불러오기 
+    setTimeout( function(){   
+        // callBack에서 생성된 결과값을 리턴받을 수 있음. (비동기값을 회피 )   
+        deviceArr      = deviceStatusSet.getResulSetArr();   // 배열 
+        deviceCnt      = deviceArr.length;                   // 처리대상 기기수량 
+        // 처리대상 기기정보 문자열
+        // ex)[{"deviceid":"111111","statuscd":"A","opentm":"08:30:00","closetm":"03:00:00"},{"deviceid":"Dev3","statuscd":"A","opentm":"00:07:00","closetm":"00:24:00"}] 
+         deviceOutStr   = deviceStatusSet.getResulSetStr();  
+        
+         if ( consoleUpd == true )
+         console.log("DEVICE-V1 final outStr=" + deviceOutStr + " /  deviceCnt=" + deviceCnt); 
+ 
+    }, checkStatTime);
+   
+}; 
+// EOF F20. 
+
+// F022. 타이머 기동 
+function startDeviceChecker() {
+
+    // 0.5 간격으로 상태체크 ( 0.1 ~ 3초 간격으로 상태확인 설정 )
+    let deviceCheckTime     = 500; 
+   
     console.log("\nDCC-100 START deviceStatusChecker "); 	
     
     // 체크 횟수 초기화 
     deviceCheckCnt = 0; 
 
-    // 특정 시간 간격으로 체크진행 
+    // 특정 시간 간격으로 체크진행 : 기기상태목록 데이터를 계속갱신하고 열림/담힘 혹은 기타 기기 메시지를 확인후에 처리함. 
     deviceStatusChecker = setInterval(function () {  					 		 
          
-        // 상태목록 데이터 저장      
-        setDeviceStatusList(statusCdVal); 
- 
-        // 열림메시지 확인 
-        checkOpenMsg(deviceArr); 
+        // 기기상태목록 데이터 확인    
+         setDeviceStatusList(); 
+        
+        // 열림/담힘메시지 확인 
+        checkActionMsg(deviceArr); 
 
         deviceCheckCnt++; // 체크횟수 1증대 
         
+        if ( consoleUpd == true )
         console.log("\nDCC-100 RUN check Cnt=" + deviceCheckCnt + " / devicecnt=" + deviceCnt ); 
 
     }, deviceCheckTime );	  	 
@@ -117,59 +121,137 @@ function stopDeviceChecker() {
 
 }; 
  
-// F17. 소켙상태확인 
+// F17. 소켙상태 - 열림 
 function checkSocketOpen(paramDeviceId) {
     
+    let actionCode = "ACTION-100"; 
+    let actionDesc = "Open the door";
+    let socketMsg  = ""; 
+    
+    // 디바이스에 해당하는 소켙호출 
     let currWss = wshashtable.get(paramDeviceId); 
- 
+
     if ( currWss == null || currWss == undefined ) {
-        console.log("SK11 ws no connect for " + paramDeviceId ); 
+        if ( consoleUpd == true )
+        console.log("Open-SK11 ws no connect for " + paramDeviceId ); 
         return false; 
     }
     else {
-        console.log("SK11 ws for " + paramDeviceId + " >> open request!!"); 
-        currWss.send("============= Open the Door Right Now!! ======================== "); 
+        // 소켙전달 메시지  ex) ACTION-100||Open the door 
+        socketMsg = actionCode + "||" + actionDesc; 
+         
+        console.log(actionCode + " ws for " + paramDeviceId + " >> open request!!"); 
+        currWss.send(socketMsg); 
     }; 
    
 }; 
- 
-// F31. 기기 오픈 전달  
-function checkOpenMsg(deviceArr) {
-    
-    let currlWss; 
-    let currDeviceid; 
-    let dvObj = {};  // 디바이스 객체  
-    let i = 0;
-    let acnt = deviceArr.length; 
+// EOF F17. 
 
-    // ex) 디바이스 오브젝트 dObj = {"deviceid":"111111","opentm":"08:30:00","closetm":"03:00:00"} 
+// F18. 소켙상태 - 닫힘 
+function checkSocketClose(paramDeviceId) {
+
+    let actionCode = "ACTION-200"; 
+    let actionDesc = "Close the door";
+    let socketMsg  = ""; 
+    
+    // 디바이스에 해당하는 소켙호출 
+    let currWss = wshashtable.get(paramDeviceId); 
+ 
+    if ( currWss == null || currWss == undefined ) {
+        if ( consoleUpd == true )
+        console.log("Close-SK21 ws no connect for " + paramDeviceId ); 
+        return false; 
+    }
+    else {
+        // 소켙전달 메시지  ex) ACTION-200||Close the door 
+        socketMsg = actionCode + "||" + actionDesc; 
+        
+        console.log(actionCode + " ws for " + paramDeviceId + " >> close request!!"); 
+        currWss.send(socketMsg); 
+    }; 
+   
+}; 
+// EOF F18. 
+
+
+// 기기목록에서 요청 정보 확인 (Later)
+function checkNum(deviceid) {
+
+    for ( obj in reqDevArr ) {
+
+        let did = obj.did; 
+        let num = obj.num; 
+        // 존재하고 있음. 
+        if (deviceid == did) {
+            return num; 
+        };
+    }; 
+
+}; 
+ 
+// ===================== F31. 기기 열림 및 닫힘 소켙메시지 전달  ==========================
+function checkActionMsg(deviceArr) {
+     
+    let currDeviceid;               // 현재 디바이스ID 
+    let currStatusCd;               // 현재 상태 코드 
+    let dvObj = {};                 // 디바이스 객체  
+    let i = 0;
+    let acnt = deviceArr.length;    // 특정 상태목록 수량 
+    // let reqDevArr   = [];          // 요청목록 
+    // let reqObj      = {};          // {'did':'1234','num','2'}; 
+ 
+    // For F31-A. 디바이스상태별 후속처리  
     for( i = 0; i < acnt ; i++ ) {
 
-         dvObj =  deviceArr[i] ; 
-
+        // C1. 디바이스 객체 
+        // ex) 디바이스 오브젝트 dObj = {"deviceid":"111111","statuscd":"A","opentm":"08:30:00","closetm":"03:00:00"}
+        dvObj =  deviceArr[i] ; 
         // console.log("DV11 dobj=" + JSON.stringify(dvObj) ); 
-    
-        currDeviceid = dvObj.deviceid; 
-    
-        // console.log("DV12 Device currDeviceid=" + currDeviceid); 
 
-        checkSocketOpen(currDeviceid);
- 
+        // C2. 현재 디바이스 ID 
+        currDeviceid = dvObj.deviceid; 
+        
+        // C3. 현재 디바이스 상태 
+        currStatusCd = dvObj.statuscd;
+        
+        if ( consoleUpd == true )
+        console.log("DV12 Device currDeviceid=" + currDeviceid + " / statuscd=" + currStatusCd); 
+
+        if (currStatusCd === 'A' ) {
+            // 소켙으로 오픈통지 
+            checkSocketOpen(currDeviceid);
+        }
+        else if (currStatusCd === 'C' ) {
+            // 소켙으로 열림통지 
+            checkSocketClose(currDeviceid);
+        }
+        else {
+            // Do nothing!  
+        };
+        // EOF 
+         
     }; 
-    
+    // EOF For F31-A
+}; 
+// EOF F31. 기기 열림 및 닫힘 소켙메시지 전달 종료 
+ 
+// ========= F40 기동과 동시에 A상태의 기기목록 호출 ============= 
+startDeviceChecker(); 
+ 
+ 
+// ============= F50 앱리스너 : 소켙만 열경우 필요없음 ============= 
+if ( allowWebUpd === true )  {
+
+    // 정적 데이터 디렉토리 설정 
+    app.use(express.static('public'));
+     
+    app.listen(PORT, () => {
+        let msg; 
+        msg = "mideviceServer V1.91 is running at: " + PORT; 
+        //console.log('Node WebServer V1.877  is running at:', PORT);
+        console.log(msg);   // 콘솔 
+    }); 
+       
 }; 
 
- 
-// 기동과 동시에 A상태의 기기목록 호출 
-startDeviceChecker("A"); 
- 
-// F20 ============================ 앱리스너 : 소켙만 열경우 필요없음 ===============================
- 
-app.listen(PORT, () => {
-  let msg; 
-  msg = "miSocketServer V1.882 is running at: " + PORT; 
-  //console.log('Node WebServer V1.877  is running at:', PORT);
-  console.log(msg);   // 콘솔 
-}); 
- 
   
