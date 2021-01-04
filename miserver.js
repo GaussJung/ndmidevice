@@ -1,6 +1,7 @@
 ﻿'use strict'; 
 
 /*
+- PrgId : AISS-ND-1000 
 - PrgName : ndmidevice 
 - Date : 2020. 01. 02 
 - Creator : C.W. Jung ( cwjung@soynet.io )
@@ -15,6 +16,7 @@
 4) Test URL ( if web is allowed ~ ) 
    http://ip:3000/demo/miuser.html 
 */ 
+
 const express       = require('express');
 const app           = express();
 const PORT          = process.env.PORT = 3000;          // 웹을 열 경우에 사용 
@@ -40,7 +42,7 @@ var deviceCheckCnt      = 0;    // 체크 횟수
 // F23. 초기상태코드 
 var initstatuscdVal     = "A";       // A:열림, C:닫힘, Y:동작완료 
 var allowWebUpd         = true;     // 웹접속허용(true : 허용, false:불허 - 단지 소켙만 허용 )
-var consoleUpd          = false;    // 콘솔출력여부 ( true : 출력, false : 미출력 )
+var consoleUpd          = true;    // 콘솔출력여부 ( true : 출력, false : 미출력 )
 
  
 // 소켙 통신  
@@ -50,7 +52,7 @@ app.use('/misocket', socketRouter);
 function setDeviceStatusList() {
 
     // F20-A. 설정값 호출간격 0.1초 간격 ( 조정가능 )
-    let checkStatTime = 100; 
+    let checkStatTime = 50; 
 
     // statusCdVal : A(열림요청), C(닫힘요청), Y(처리완료) 
 
@@ -85,7 +87,7 @@ function setDeviceStatusList() {
 function startDeviceChecker() {
 
     // 0.5 간격으로 상태체크 ( 0.1 ~ 3초 간격으로 상태확인 설정 )
-    let deviceCheckTime     = 500; 
+    let deviceCheckTime     = 100; 
    
     console.log("\nDCC-100 START deviceStatusChecker "); 	
     
@@ -96,7 +98,7 @@ function startDeviceChecker() {
     deviceStatusChecker = setInterval(function () {  					 		 
          
         // 기기상태목록 데이터 확인    
-         setDeviceStatusList(); 
+        setDeviceStatusList(); 
         
         // 열림/담힘메시지 확인 
         checkActionMsg(deviceArr); 
