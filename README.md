@@ -24,5 +24,5 @@ http://111.222.111.22:3000
 
 6. 소켙테스트 ( 원격일경우 localhost를 ip로 변경 ) 
 - http://localhost:3000/demo/miuser.html 
-- biz_device_info 테이블의  deviceid 111111의 statuscd를 A로 변경
-- 소켙접속시 ACTION-100 이 주고 받는 것 확인 
+- DB Editor를 활용하여 biz_device_info 테이블의  deviceid 111111의 statuscd를 A로 변경 ( Y -> A )  
+- 소켙접속후 ACTION-100||SUCCESS 메시지 수령후 것 확인 (  A -> Y ) 
