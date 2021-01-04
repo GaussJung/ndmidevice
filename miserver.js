@@ -5,7 +5,7 @@
 - PrgName : ndmidevice 
 - Date : 2020. 01. 02 
 - Creator : C.W. Jung ( cwjung@soynet.io )
-- Version : 1.0 
+- Version : v0.9  
 - Description : socket server for soynet device operation 
 - Usage 
 1) startup : sudo node miserver.js  ( or sudo forever start miserver.js )  
@@ -87,7 +87,7 @@ function setDeviceStatusList() {
 function startDeviceChecker() {
 
     // 0.5 간격으로 상태체크 ( 0.1 ~ 3초 간격으로 상태확인 설정 )
-    let deviceCheckTime     = 100; 
+    let deviceCheckTime     = 500; 
    
     console.log("\nDCC-100 START deviceStatusChecker "); 	
     
