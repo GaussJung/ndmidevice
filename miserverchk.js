@@ -33,6 +33,7 @@ var checkStatusSet = require('./dataset/checkDeviceStatus');
 
 // F23. 초기상태코드 
 var allowWebUpd         = true;     // 웹접속허용(true : 허용, false:불허 - 단지 소켙만 허용 )
+
 var initstatuscdVal     = "C";       // A:열림, C:닫힘, Y:동작완료 
 
 // 기동과 동시에 initstatuscdVal 상태의 기기목록 호출 

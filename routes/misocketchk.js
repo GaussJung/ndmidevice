@@ -96,6 +96,8 @@ webSkt.on('connection', (wskt, request) => {
     //  디바이스확인  ws://121.11.23.3/socket?deviceid=10004&user=james --> 10004
     let deviceid = conuri.replace(/.+deviceid=([^&]+).*/,"$1");
 
+    let devicdInfoStr = ""; // 기기정보 
+
     console.log( "SC10 conuri=" + conuri + " / deviceid=" + deviceid); 
 
     let pfnow     = 0.0;        // 현재 시간 millisec 
@@ -114,7 +116,7 @@ webSkt.on('connection', (wskt, request) => {
      wskt.on('message', (indata) => {
 
         let fmessage  = "";
-  
+        let msgtmp = ""; 
         // 현재시간 ( millisec )
         pfnow = process.hrtime(); 
         curmcnt++;  // 현재메시지 수량 
@@ -131,7 +133,7 @@ webSkt.on('connection', (wskt, request) => {
         catch (err) {
             sendError(wskt, 'Wrong format Err SE-150 err=' + err);
             return;
-        }
+        }; 
         // EOF SF05. 
 
         // 입력데이터에 액션데이터가 있는지 확인 
@@ -143,47 +145,78 @@ webSkt.on('connection', (wskt, request) => {
             // 모듈에서 데이터 갱신 호출 
             deviceStatusSet.setDeviceStatus(deviceid,'Y')
             .then( function(results){ 
-                console.log("UD20-A Update Success deviceid=" + deviceid);
+                // 열림상태 설정성공 
+                msgtmp = "\nUD20-A Update Open Success deviceid=" + deviceid; 
+                console.log(msgtmp);
+                wskt.send(msgtmp); 
             })
             .catch(function(err){
-                console.log("UD20-B Update Fail deviceid=" + deviceid + " / err : " + err);
+                // 열림상태 설정오류 
+                msgtmp = "\nUD20-B Update Open Fail deviceid=" + deviceid + " / err : " + err; 
+                console.log(msgtmp);
+                wskt.send(msgtmp); 
             });
              
         }
         else  if ( indata.indexOf("ACTION-200||SUCCESS") > -1 ) {
-
-            // 닫기완료 
-            console.log("D10-K Final Close" ); 
-  
+ 
             // 모듈에서 데이터 갱신 호출 
             deviceStatusSet.setDeviceStatus(deviceid,'Y')
             .then( function(results){ 
-                console.log("UD20-A Update Success deviceid=" + deviceid);
+                // 닫힘상태설정 완료 
+                msgtmp = "\nUD30-A Update Close Success deviceid=" + deviceid; 
+                console.log(msgtmp);
+                wskt.send(msgtmp); 
             })
             .catch(function(err){
-                console.log("UD20-B Update Fail deviceid=" + deviceid + " / err : " + err);
+                // 닫힘상태설정 오류 
+                msgtmp = "\nUD30-B Update Close Fail deviceid=" + deviceid + " / err : " + err; 
+                console.log(msgtmp);
+                wskt.send(msgtmp); 
             });
  
         }
         else {
 
-            let metaStr = "V1.4 Time=" + pfnow + " / connAll=" + conncnt + " / msgAll=" + allmcnt + " / msgCur=" + curmcnt;
+            let metaStr = "\nV1.41 Time=" + pfnow + " / connAll=" + conncnt + " / msgAll=" + allmcnt + " / msgCur=" + curmcnt;
             
             let finalMsg = metaStr + "\n" + fmessage;  // 최종메시지 : 메타정보 + 전달메시지 
          
-            console.log("D11K deviceSetTmp=" + deviceSetTmp ); 
-    
-            if ( deviceSetTmp != null && deviceSetTmp.length > 0 ) {
-                // 소켙통신으로 기기 목록 DB결과 내보냄 
-                finalMsg += "\n" + deviceSetTmp;
-                console.log( "D11G finalMsg=" + finalMsg ); 
-            }; 
-    
-            // 메시지 송부 
-            wskt.send(finalMsg); 
-        }; 
+             console.log("\n ========================= D11K deviceid=" + deviceid); 
+            
+            // if D1. 디바이스 정보 확인후 병행 전달 
+            if ( deviceid != null && deviceid.length > 0 ) {
  
-    
+                // 모듈에서 데이터셑 호출 
+                deviceStatusSet.getDeviceInfo(deviceid)
+                .then( function(results){ 
+                    
+                    // 기기정보 문자열화 (정보가 넘어온 경우에만 ) 
+                    if ( results.length > 0 ) {
+                        devicdInfoStr = JSON.stringify(results); 
+                        finalMsg += "\n" + devicdInfoStr; 
+                    }; 
+                   
+                    console.log( "D11G-A devicdInfoStr=" + devicdInfoStr + " / finalMsg=" + finalMsg ); 
+ 
+                    // M10. 메시지 송부 
+                    wskt.send(finalMsg); 
+                })
+                .catch(function(err){
+
+                    console.log( "D11G-A devicdInfoStr=" + devicdInfoStr + " / finalMsg=" + finalMsg ); 
+                    console.log("P10 Promise rejection error: " + err);
+                });
+ 
+            }
+            else {
+                // M20. 기기정보 없이 메시지 송부 
+                wskt.send(finalMsg); 
+            }; 
+            // EOF D1 
+  
+        }; 
+  
     });
     // EOF F33-1. message binding 
     
