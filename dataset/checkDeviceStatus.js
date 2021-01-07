@@ -40,7 +40,7 @@ function setDeviceStatusList(statusCdVal) {
 function startDeviceChecker(statusCdVal) {
 
     // 0.5 간격으로 상태체크 ( 0.1 ~ 3초 간격으로 상태확인 설정 )
-    let deviceCheckTime     = 200;  
+    let deviceCheckTime     = 1000;  
    
     console.log("\nDCC-100 START deviceStatusChecker "); 	
     
