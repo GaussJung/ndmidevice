@@ -8,7 +8,7 @@ const mariadb       = require('mariadb/callback');
 const dbconfig      = require('../config/miDBConfig');   // 동일 디렉토리 설정화일 확인 
 const dbutil        = require('./dbutil');   // 동일 디렉토리 설정화일 확인 
 
-const consoleUpd     = false;     // 콘솔출력여부 ( true : 출력, false : 미출력 )
+const consoleUpd     = true;     // 콘솔출력여부 ( true : 출력, false : 미출력 )
  
 // F30. 접속 Pool 정의 =======================================================================================
 const dbpool = mariadb.createPool({

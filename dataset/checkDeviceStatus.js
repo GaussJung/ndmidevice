@@ -10,7 +10,7 @@ var deviceCnt           = 0;        // 설정상태 기기수량
  global.deviceArr       = deviceArr;      
  global.deviceCnt       = deviceCnt; 
  
-const consoleUpd          = false;    // 콘솔출력여부 ( true : 출력, false : 미출력 )
+const consoleUpd          = true;    // 콘솔출력여부 ( true : 출력, false : 미출력 )
  
 // F22. 기기상태 점검 타이머
 var deviceStatusChecker;            
