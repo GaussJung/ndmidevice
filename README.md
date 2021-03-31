@@ -1,9 +1,9 @@
-# ndmidevice
+# ndmidevice  v1.05
 socket application for device 
 
 1. 준비사항 
 - git 설치 
-- https://git-scm.com/downloads 
+- https://git-scm.com/downloads  
 
 2. 다운로드 
 설치를 원하는 디렉토리에서 다음 수행 ( C:\devsrc  or Linux :  /work ) 
@@ -15,6 +15,9 @@ cd c:\devsrc\ndmidevice   ( Linux : cd /work/ndmidevice )
 npm install 
 
 4. 기동방법 
+단순기동 
+linux : sudo node server.js 
+
 1) timeSetOut 
 windows : node miserver.js 
 linux : sudo node miserver.js 
