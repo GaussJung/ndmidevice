@@ -22,7 +22,7 @@
 
 const express       = require('express');
 const app           = express();
-const PORT          = process.env.PORT = 3000;          // 웹을 열 경우에 사용 
+const PORT          = process.env.PORT = 2100;          // 웹을 열 경우에 사용 
 
 //  ==================== F10. 소켙관련 라이브러리 및 변수선어 ====================
 //  소켙라우터  
